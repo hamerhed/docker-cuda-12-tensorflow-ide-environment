@@ -1,0 +1,13 @@
+version: "3"
+services:
+  code-studio-ide:
+    image: hamerhed:tensorflow-cuda12-ide
+    volumes: 
+      - ~:/home/user
+      - $HOME/.Xauthority:/root/.Xauthority:rw
+      #- ~/containers/pycharm:/pycharm_config
+    environment:
+      - DISPLAY
+    tty: true
+    network_mode: host
+    command: "/usr/share/code/code --no-sandbox"
