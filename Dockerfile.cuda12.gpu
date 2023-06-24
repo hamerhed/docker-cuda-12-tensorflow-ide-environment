@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.0.0-devel-ubuntu20.04
+FROM nvidia/cuda:12.0.0-cudnn8-devel-ubuntu20.04
 
 ARG OPENCV_VERSION=4.x
 ARG DEBIAN_FRONTEND=noninteractive
@@ -120,7 +120,16 @@ RUN pip3 install -r /requirements.txt
 RUN wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | apt-key add -\
 	&& add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
 		
-RUN apt-get update -y --fix-missing && apt-get install -y code 
+RUN apt-get update -y --fix-missing && apt-get install -y code
+
+RUN pip3 install --upgrade pip
+RUN pip3 install spyder
+
+RUN apt-get autoclean && apt-get autoremove
+
+RUN useradd -ms /bin/bash user -G video,sudo
+
+USER user
 
 #run code studio
 #CMD ["/usr/share/code/code --no-sandbox"]
