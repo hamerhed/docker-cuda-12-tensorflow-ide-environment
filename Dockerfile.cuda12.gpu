@@ -45,7 +45,6 @@ RUN apt-get update && apt-get upgrade -y \
         liblapack-dev \
         libdc1394-dev \
         libvtk7-qt-dev \
-        pkg-config \
         software-properties-common \
         ## Python
         python3-dev \
@@ -64,12 +63,18 @@ RUN apt-get update && apt-get -y upgrade && \
 RUN nvcc --version
 RUN gcc  --version
 
+ADD ./opencv-${OPENCV_VERSION}-24.06.2023.zip /opt/${OPENCV_VERSION}.zip
+ADD ./opencv_contrib-${OPENCV_VERSION}-24.06.2023.zip /opt/${OPENCV_VERSION}_contrib.zip
+
+RUN ls -al /opt
+
 RUN cd /opt/ &&\
     # Download and unzip OpenCV and opencv_contrib and delte zip files
-    wget https://github.com/opencv/opencv/archive/$OPENCV_VERSION.zip &&\
+    #wget https://github.com/opencv/opencv/archive/$OPENCV_VERSION.zip &&\
     unzip $OPENCV_VERSION.zip &&\
     rm $OPENCV_VERSION.zip &&\
-    wget https://github.com/opencv/opencv_contrib/archive/$OPENCV_VERSION.zip &&\
+    mv ${OPENCV_VERSION}_contrib.zip ${OPENCV_VERSION}.zip &&\
+    #wget https://github.com/opencv/opencv_contrib/archive/$OPENCV_VERSION.zip &&\
     unzip ${OPENCV_VERSION}.zip &&\
     rm ${OPENCV_VERSION}.zip &&\
     # Create build folder and switch to it
@@ -79,6 +84,12 @@ RUN cd /opt/ &&\
         -DOPENCV_EXTRA_MODULES_PATH=/opt/opencv_contrib-${OPENCV_VERSION}/modules \
         -DWITH_CUDA=ON \
         -DCMAKE_BUILD_TYPE=RELEASE \
+        #-D BUILD_NEW_PYTHON_SUPPORT=ON \
+        #-D BUILD_opencv_python3=ON \
+        #-D HAVE_opencv_python3=ON \
+        -D PYTHON_DEFAULT_EXECUTABLE=/usr/bin/python3.8 \
+        -D OPENCV_PYTHON3_INSTALL_PATH=/usr/lib/python3.8/site-packages \
+		-D PYTHON_EXECUTABLE=/usr/bin/python3.8 \
         # Install path will be /usr/local/lib (lib is implicit)
         -DCMAKE_INSTALL_PREFIX=/usr/local \
         .. 
@@ -116,14 +127,24 @@ RUN pip3 install tflearn imutils h5py tqdm jupyterlab urllib3 mnist keras scikit
 ADD $PWD/requirements.txt /requirements.txt
 RUN pip3 install -r /requirements.txt
 
+#RUN apt-key del 7fa2af80 && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb \
+#	&& dpkg -i cuda-keyring_1.0-1_all.deb
+	
+#RUN sed -i '/developer\.download\.nvidia\.com\/compute\/cuda\/repos/d' /etc/apt/sources.list.d/*
+#RUN sed -i '/developer\.download\.nvidia\.com\/compute\/machine-learning\/repos/d' /etc/apt/sources.list.d/*
+
+#RUN apt-key del 7fa2af80 && apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
 #install code
-RUN wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | apt-key add -\
+RUN apt-get update && wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | apt-key add -\
 	&& add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
 		
 RUN apt-get update -y --fix-missing && apt-get install -y code
 
 RUN pip3 install --upgrade pip
-RUN pip3 install spyder
+RUN pip3 install spyder==5.4.3
+#RUN pip3 install python3-opencv python3-opencv-contrib
+
+RUN cp -r /usr/lib/python3.8/site-packages/cv2 /usr/local/lib/python3.8/dist-packages
 
 RUN apt-get autoclean && apt-get autoremove
 
