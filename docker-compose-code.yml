@@ -2,6 +2,7 @@ version: "3"
 services:
   code-studio-ide:
     image: hamerhed:tensorflow-cuda12-ide
+    container_name: ml-ide
     volumes: 
       - ~/ml-ide:/home/user
       - $HOME/.Xauthority:/root/.Xauthority:rw

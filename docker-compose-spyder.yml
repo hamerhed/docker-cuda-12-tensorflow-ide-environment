@@ -2,6 +2,7 @@ version: "3"
 services:
   pycharm-ide:
     image: hamerhed:tensorflow-cuda12-ide
+    container_name: ml-ide
     volumes: 
       - $HOME/.Xauthority:/root/.Xauthority:rw
       - ~/ml-ide:/home/user
