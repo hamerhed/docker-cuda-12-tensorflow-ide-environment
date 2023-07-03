@@ -158,8 +158,18 @@ RUN cd /dlib-19.24 \
     && cd $WORKDIR \
     && rm /dlib-19.24.tar.bz2
 
+#install tensorflow from sources
+RUN apt-get update && apt-get install -y llvm-12 clang-12
+
+WORKDIR /
+
+RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.17.0/bazelisk-linux-amd64 \
+	&& chmod 755 bazelisk-linux-amd64 \
+	&& mv bazelisk-linux-amd64 /usr/local/bin/bazelisk \
+	&& export PATH="/usr/local/bin/bazel:$PATH"
+
 #install tensorflow
-RUN pip3 install tflearn imutils h5py tqdm jupyterlab urllib3 mnist keras scikit-image numba matplotlib
+RUN pip3 install tflearn imutils h5py tqdm jupyterlab urllib3 mnist keras scikit-image numba matplotlib wheel packaging keras_preprocessing
 
 ADD $PWD/requirements.txt /requirements.txt
 RUN pip3 install -r /requirements.txt
@@ -175,9 +185,80 @@ RUN pip3 install spyder==5.4.3
 
 RUN apt-get autoclean && apt-get autoremove
 
-RUN useradd -ms /bin/bash user -G video,sudo
+WORKDIR /tensorflow
 
-USER user
+RUN git clone --progress --verbose https://github.com/tensorflow/tensorflow.git .
+
+
+
+RUN ln -s /usr/local/bin/bazelisk /usr/local/bin/bazel
+RUN bazel version
+
+
+RUN echo $PATH
+
+RUN whereis clang
+
+
+# Configure the build for our CUDA configuration.
+#ENV TF_NCCL_VERSION='2.1.15'
+#ENV NCCL_INSTALL_PATH=/usr/local/nccl2
+#ENV TF_NEED_GCP 0
+#ENV TF_NEED_HDFS 0
+ENV TF_NEED_OPENCL 0
+ENV TF_NEED_JEMALLOC 0
+ENV TF_ENABLE_XLA 0
+ENV TF_NEED_VERBS 0
+ENV TF_CUDA_CLANG 0
+ENV TF_DOWNLOAD_CLANG 0
+ENV TF_NEED_MKL 0
+ENV TF_DOWNLOAD_MKL 0
+ENV TF_NEED_MPI 0
+ENV TF_NEED_S3 0
+ENV TF_NEED_KAFKA 0
+ENV TF_NEED_GDR 0
+ENV TF_NEED_OPENCL_SYCL 0
+ENV TF_SET_ANDROID_WORKSPACE 0
+ENV TF_NEED_AWS 0
+ENV CI_BUILD_PYTHON python3
+ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+ENV TF_NEED_CUDA 1
+ENV TF_NEED_TENSORRT 0
+ENV TF_CUDA_COMPUTE_CAPABILITIES=6.1
+ENV TF_CUDA_VERSION=12.0
+ENV TF_CUDNN_VERSION=8
+ENV TMP="/tmp"
+
+# To workaround an issue on python3-only environment, cf: https://github.com/tensorflow/tensorflow/pull/19443 and
+# https://github.com/tensorflow/tensorflow/issues/15618
+RUN ln -s -f /usr/bin/python3 /usr/bin/python
+ 
+RUN ./configure
+
+RUN bazel build --config=cuda //tensorflow/tools/pip_package:build_pip_package
+            
+#RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 && \
+#    LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${LD_LIBRARY_PATH} \
+#    tensorflow/tools/ci_build/builds/configured GPU \
+#    bazel build -c opt --copt=-mavx --copt=-mavx2 --copt=-mfma --copt=-mfpmath=both --copt=-msse4.1 --copt=-msse4.2 --config=cuda \
+#    --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" \
+#       # tensorflow/tools/pip_package:build_pip_package && \
+#       tensorflow/tools/pip_package:libtensorflow && \
+#    rm /usr/local/cuda/lib64/stubs/libcuda.so.1 && \
+#    bazel-bin/tensorflow/tools/pip_package/libtensorflow /tmp/pip && \
+#    rm -rf /root/.cache
+
+RUN apt-get install patchelf 
+
+RUN ./bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+
+WORKDIR /tmp/tensorflow_pkg
+
+RUN pip3 install /tmp/tensorflow_pkg/tensorflow-2.14.0-cp38-cp38-linux_x86_64.whl
+
+#RUN useradd -ms /bin/bash user -G video,sudo
+
+#USER user
 
 #run code studio
 #CMD ["/usr/share/code/code --no-sandbox"]
